@@ -1,0 +1,4 @@
+interface:
+  display_name: "Windows C Drive Cleanup"
+  short_description: "Safely inspect and clean Windows C drive caches."
+  default_prompt: "Use $windows-c-drive-cleanup to inspect C drive usage, clean safe caches, and report reclaimed space."
