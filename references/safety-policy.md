@@ -4,7 +4,7 @@
 
 - Prefer Microsoft Storage Sense, Cleanup recommendations, and Disk Cleanup guidance for Windows-owned temporary files and system cleanup categories.
 - User-supplied guides, including CSDN cleanup articles, can be used as checklists, but apply them through local inventory and risk classification.
-- On this machine, previous successful cleanup work found large recoverable space in browser caches, Electron/WebView app caches, NVIDIA update artifacts, NVIDIA shader caches, Steam cache, and `%TEMP%`.
+- Browser caches, Electron/WebView app caches, NVIDIA update/shader caches, Steam cache, and `%TEMP%` are common candidates; verify their current contents and ownership.
 
 ## Risk Classes
 
@@ -15,7 +15,7 @@ Safe to clean after inventory:
 - Steam `htmlcache`.
 - Crash dump files when the user is not actively debugging those crashes.
 
-Ask first:
+Require scope approval (carry forward an existing explicit decision):
 - Desktop, Documents, Downloads, Pictures, Videos, Music.
 - App vendor roots such as Tencent, WeChat, kingsoft/WPS, LarkShell, Adobe, NetEase, Steam, Docker, OpenAI, Codex.
 - System restore points and shadow storage.
@@ -30,8 +30,9 @@ Avoid by default:
 ## Reporting Standard
 
 Always report:
-- C: free space before and after.
-- Total space reclaimed.
+- Before/after free space for each affected drive.
+- Deleted logical bytes and measured net free-space change separately.
 - Largest directories cleaned.
 - Large directories intentionally left untouched and why.
 - Any admin-only checks that could not be run, such as shadow storage.
+- Access failures, skipped links, locked files, and any changed startup configuration.

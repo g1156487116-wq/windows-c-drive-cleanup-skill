@@ -1,63 +1,49 @@
 ---
 name: windows-c-drive-cleanup
-description: "Safely inspect and clean Windows C drive space. Use when the user asks to clean C:, free disk space, diagnose why C: is filling up, apply a Windows/CSDN C-drive cleanup guide, remove temporary files, browser/app caches, Windows Update or Delivery Optimization caches, NVIDIA cache/update artifacts, or report reclaimed space without deleting personal data."
+description: "Inspect and clean Windows C: or multiple local drives, including regenerable caches, installer leftovers, old logs, and reviewed deep-cleanup candidates. Use for disk-space diagnosis, routine cleanup, or a deeper storage audit."
 ---
 
-# Windows C Drive Cleanup
+# Windows Disk Cleanup
 
-## Workflow
+## Scope and authorization
 
-Treat cleanup as diagnosis first, deletion second.
+Carry forward the user's approvals and exclusions. A request to inspect produces candidates; a request to clean authorizes known regenerable caches. Explicit approval of listed deep-cleanup candidates authorizes those exact targets without another confirmation. Clarify only a material ambiguity, such as whether "all" includes personal media mentioned outside the candidate list.
 
-1. Read the user's source guide or article when one is provided. If using online or time-sensitive Windows guidance, verify with current official sources before applying it.
-2. Run a read-only inventory first:
+Discover current fixed drives with `Get-Volume` or `Win32_LogicalDisk`; never assume a particular drive layout. Recheck paths, ownership, timestamps, and running processes on every run. Historical sizes are clues, not current measurements. Do not start Docker or other services just to inventory storage.
 
-```powershell
-.\scripts\cleanup-c-drive.ps1 -ReportOnly
-```
+## Routine cleanup
 
-3. Explain the largest candidates by ownership and risk. Separate:
-   - safe regenerable caches,
-   - personal files or application data,
-   - admin-sensitive system items,
-   - items that should not be deleted automatically.
-4. Clean only clearly regenerable caches unless the user explicitly approves more:
+1. Run `scripts/cleanup-c-drive.ps1 -ReportOnly` for the C: baseline. For other drives, inspect known app locations and configured cache paths.
+2. Review ownership and contents. A name containing `cache`, `log`, `temp`, or `backup` does not establish disposability. MSIX `LocalCache` can contain application state, and video-editor caches can contain materials or project dependencies.
+3. Use `-CleanKnownCaches` for the built-in targets. Files modified within seven days are retained by default. Change the age threshold only when the target's purpose and the approved scope justify it.
+4. Discovered candidates require an exact reviewed list with `-ApprovedAppCachePaths`; never bulk-delete all regex matches. Prefer `cleanup-targets.ps1` for multi-drive or individual-file cleanup.
+5. Report deleted logical bytes separately from net free-space change, and disclose skipped/locked files and unreadable paths. Save reports outside the public skill repository.
 
 ```powershell
-.\scripts\cleanup-c-drive.ps1 -CleanKnownCaches
+.\scripts\cleanup-targets.ps1 -TargetPath 'D:\ExampleApp\Cache' -OutputPath "$env:USERPROFILE\cleanup-preview.json"
+.\scripts\cleanup-targets.ps1 -TargetPath 'D:\ExampleApp\Cache' -Apply -OutputPath "$env:USERPROFILE\cleanup-result.json"
 ```
 
-5. If the inventory shows large discovered Electron/WebView/app cache directories, clean them only after confirming they are cache-like paths:
+The target script is preview-only unless `-Apply` is provided. It validates literal absolute paths, rejects linked ancestors and overlapping targets, skips child links, checks executable locations, and verifies remaining files. It preserves the selected directory itself. Its process check cannot prove a folder is unused by interpreters, services, tasks or application configuration; inspect those references separately when relevant. Run deletion only while the target tree is quiescent; filesystem checks are not an atomic defense against concurrent directory replacement.
+
+## Deep audit
+
+Read [references/deep-cleanup.md](references/deep-cleanup.md) for installer archives, dumps, logs, copied dependencies, models, application versions, backups, and release artifacts.
+
+Use the read-only scanner on selected roots after a top-level inventory. It emits progress, avoids directory links, and records access failures. Avoid repeatedly rescanning complete project trees.
 
 ```powershell
-.\scripts\cleanup-c-drive.ps1 -CleanKnownCaches -CleanDiscoveredAppCaches
+node .\scripts\audit-storage.cjs --output "$env:USERPROFILE\storage-audit.json" 'C:\Users\Example' 'D:\Projects'
 ```
 
-6. Re-run the report and state before/after C: free space plus what was intentionally left alone.
+Group candidates by ownership and deletion conditions. Hash suspected duplicates before claiming identical contents. Folder size is not a reclaimed-space promise, especially with hardlinks, compression, sparse files, or nested candidates. With explicit approval, convert the reviewed list to exact paths and execute batches with JSON reports.
 
-## Safety Rules
+## Boundaries
 
-- Do not delete user folders such as Desktop, Documents, Downloads, Pictures, Videos, or Music automatically.
-- Do not delete whole AppData vendor folders such as Tencent, WeChat, WPS/kingsoft, LarkShell, NetEase, Adobe, or Steam. Delete only cache subdirectories after ownership is understood.
-- Do not delete `C:\ProgramData\Package Cache`; it can affect repair, update, or uninstall flows.
-- Do not force-delete locked files. Leave active files for later and report that they were skipped.
-- Do not change pagefile, hibernation, restore points, compression, OneDrive, or default save locations unless the user explicitly asks for those tradeoffs.
-- Prefer moving regenerable caches off C: for recurring growth when a stable alternate drive exists, but first verify the current environment variables and app settings.
+Personal media, chat records, source code, database state, agent histories and recovery backups require explicit scope approval. Preserve session databases and provider-switching state according to the user's decisions. Do not generalize one user's permission to other machines.
 
-## Known Good Targets
+Use an application's official uninstaller for whole-app removal. Verify completion, registration, active processes, and leftover paths. For old versions, check launcher configuration, shortcuts and uninstall registrations; a numerically older folder can still be the launch target. Back up changed launcher configuration and validate the retained version before deleting the old one. Restore the configuration if validation fails.
 
-The script includes these low-risk classes:
+Do not force locked files, take ownership, change ACLs, disable security, or treat access-denied scans as empty directories. Use official Windows maintenance tools for component-store cleanup, and report when elevation prevents analysis. Hibernation, pagefiles, restore points, cloud sync, and migrations require the corresponding user decision.
 
-- `%TEMP%`, `C:\Windows\Temp`
-- Windows Update download cache and Delivery Optimization cache
-- Browser `Cache`, `Code Cache`, `GPUCache`, and `Service Worker\CacheStorage` for Edge and Chrome default profiles
-- NVIDIA `DXCache`, `GLCache`, and NVIDIA app `UpdateFramework\ota-artifacts`
-- Steam `htmlcache`
-- Windows user `CrashDumps`
-
-Discovered app caches are limited to directories whose names match cache/temp/log/crash patterns under user AppData. Review the report before using `-CleanDiscoveredAppCaches`.
-
-## References
-
-- Read `references/safety-policy.md` when the user asks for broader cleanup, system restore/hibernation/pagefile changes, or deletion outside the built-in script targets.
-- Use `scripts/cleanup-c-drive.ps1` for repeatable inventory and safe cleanup.
+Read [references/safety-policy.md](references/safety-policy.md) for additional system and application boundaries. Keep machine-specific paths, hashes, logs, screenshots and reports out of published skills.

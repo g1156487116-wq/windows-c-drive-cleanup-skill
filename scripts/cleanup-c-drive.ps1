@@ -2,7 +2,9 @@ param(
   [switch]$ReportOnly,
   [switch]$CleanKnownCaches,
   [switch]$CleanDiscoveredAppCaches,
-  [int]$MinimumCandidateMB = 50
+  [int]$MinimumCandidateMB = 50,
+  [string[]]$ApprovedAppCachePaths = @(),
+  [ValidateRange(0,36500)][int]$MinimumAgeDays = 7
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -46,8 +48,11 @@ function New-Target([string]$Name, [string]$Path, [string]$Class, [bool]$KnownSa
 
 function Clear-Target([string]$Path) {
   if (-not (Test-Path -LiteralPath $Path)) { return }
-  Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | ForEach-Object {
-    Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+  try {
+    & (Join-Path $PSScriptRoot 'cleanup-targets.ps1') -TargetPath $Path -Apply -MinimumAgeDays $MinimumAgeDays
+  } catch {
+    Write-Warning "Skipped $Path : $($_.Exception.Message)"
+    [pscustomobject]@{Path=$Path;Status='Skipped';Error=$_.Exception.Message}
   }
 }
 
@@ -122,6 +127,9 @@ function Get-HighRiskSnapshot {
   }
 }
 
+if ($CleanDiscoveredAppCaches -and -not $ReportOnly -and $ApprovedAppCachePaths.Count -eq 0) {
+  throw 'Supply reviewed exact paths with -ApprovedAppCachePaths before deleting discovered candidates.'
+}
 $before = Get-DriveSnapshot
 $known = @(Get-KnownTargets)
 $discovered = @(Get-DiscoveredAppCacheTargets)
@@ -134,7 +142,7 @@ if ($CleanKnownCaches -and -not $ReportOnly) {
 
 if ($CleanDiscoveredAppCaches -and -not $ReportOnly) {
   foreach ($target in $discovered) {
-    Clear-Target $target.Path
+    if ($target.Path -in $ApprovedAppCachePaths) { Clear-Target $target.Path }
   }
 }
 

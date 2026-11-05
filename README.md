@@ -1,169 +1,85 @@
-# Windows C Drive Cleanup Skill / Windows C 盘清理 Skill
+# Windows Disk Cleanup / Windows 磁盘清理
 
-## English
+A Codex skill for routine cache cleanup and evidence-based deep storage audits across Windows drives. The skill identifier stays `windows-c-drive-cleanup` for existing installations.
 
-This is a Codex skill for safely inspecting and cleaning Windows `C:` drive space.
-It is designed for cautious cleanup: diagnose first, delete only clearly regenerable caches, then report what changed.
+用于 Windows 多磁盘缓存清理与深度占用排查的 Codex 技能。保留 `windows-c-drive-cleanup` 标识，兼容已有安装。
 
-### What It Does
-
-- Inventories `C:` free space and common cleanup candidates.
-- Cleans low-risk temporary files and cache directories when explicitly requested.
-- Reports reclaimed space after cleanup.
-- Leaves personal files and higher-risk system settings alone unless the user explicitly approves them.
-
-### Safe Cleanup Targets
-
-- User and Windows temporary files.
-- Edge and Chrome cache directories.
-- Electron/WebView app caches after review.
-- NVIDIA shader/update caches.
-- Steam `htmlcache`.
-- Crash dump files when not actively needed for debugging.
-
-### What It Avoids by Default
-
-- Desktop, Documents, Downloads, Pictures, Videos, and Music.
-- App data roots such as WeChat/Tencent, WPS/kingsoft, Adobe, Steam, Lark, or NetEase.
-- `C:\ProgramData\Package Cache`.
-- System restore points, hibernation, pagefile settings, registry cleanup, and third-party cleaner behavior.
-
-### Install
-
-Clone this repository into your Codex skills directory:
+## Install / 安装
 
 ```powershell
-cd $env:USERPROFILE\.codex\skills
-git clone https://github.com/g1156487116-wq/windows-c-drive-cleanup-skill.git windows-c-drive-cleanup
+git clone https://github.com/g1156487116-wq/windows-c-drive-cleanup-skill.git "$env:USERPROFILE\.codex\skills\windows-c-drive-cleanup"
 ```
 
-Restart Codex if needed so the skill is discovered.
+For an existing clone, update from its directory with `git pull --ff-only`. Start a new agent task if the updated skill has not been discovered.
 
-### Use
+已有安装可在技能目录执行 `git pull --ff-only` 更新。更新后若尚未被识别，可新建一个 agent 任务。
 
-After installing, you can simply tell your agent:
+## Use / 使用
 
-```text
-Clean my C drive
-```
-
-or in Chinese:
+After installing, tell the agent directly. 安装后，直接对 agent 说下面任意一句即可。
 
 ```text
 清理C盘
-```
-
-For explicit invocation:
-
-```text
-Use $windows-c-drive-cleanup to inspect C drive usage, clean safe caches, and report reclaimed space.
-```
-
-The agent should first run a read-only inventory, explain the cleanup candidates, then clean safe caches and report the before/after free space.
-
-### Manual Script Usage
-
-Read-only report:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\cleanup-c-drive.ps1 -ReportOnly
-```
-
-Clean known safe caches:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\cleanup-c-drive.ps1 -CleanKnownCaches
-```
-
-Clean known safe caches plus reviewed app cache candidates:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\cleanup-c-drive.ps1 -CleanKnownCaches -CleanDiscoveredAppCaches
-```
-
-## 中文
-
-这是一个用于安全检查和清理 Windows `C:` 盘空间的 Codex skill。
-它的原则是：先诊断，再删除；只清理明确可再生的缓存，最后报告释放了多少空间。
-
-### 它能做什么
-
-- 盘点 `C:` 盘剩余空间和常见清理候选项。
-- 在明确需要清理时，删除低风险临时文件和缓存目录。
-- 清理后报告释放空间。
-- 默认不碰个人文件和高风险系统设置，除非用户明确批准。
-
-### 默认可清理目标
-
-- 用户临时文件和 Windows 临时文件。
-- Edge、Chrome 浏览器缓存。
-- 经过确认的 Electron/WebView 应用缓存。
-- NVIDIA 着色器缓存和更新包缓存。
-- Steam `htmlcache`。
-- 不再需要调试时的崩溃转储文件。
-
-### 默认不会清理
-
-- 桌面、文档、下载、图片、视频、音乐。
-- 微信/Tencent、WPS/kingsoft、Adobe、Steam、飞书、网易云等应用主数据目录。
-- `C:\ProgramData\Package Cache`。
-- 系统还原点、休眠、虚拟内存设置、注册表清理、第三方清理软件式的一键清理。
-
-### 安装
-
-把这个仓库克隆到 Codex skills 目录：
-
-```powershell
-cd $env:USERPROFILE\.codex\skills
-git clone https://github.com/g1156487116-wq/windows-c-drive-cleanup-skill.git windows-c-drive-cleanup
-```
-
-如有需要，重启 Codex，让它重新发现这个 skill。
-
-### 使用
-
-安装后，你可以直接对 agent 说：
-
-```text
-清理C盘
-```
-
-或者：
-
-```text
+清理各个盘
+深度探索一下，看下还有什么内容可以清理
 Clean my C drive
+Audit all my Windows drives and identify deep-cleanup candidates
 ```
 
-也可以显式调用：
+Explicit invocation also works. 也支持显式调用。
 
 ```text
-Use $windows-c-drive-cleanup to inspect C drive usage, clean safe caches, and report reclaimed space.
+Use $windows-c-drive-cleanup to inspect my drives, clean authorized candidates, and report reclaimed space.
 ```
 
-agent 应该先进行只读盘点，解释哪些能清、哪些不能自动动，然后清理安全缓存，并报告清理前后的 C 盘可用空间。
+## Workflow / 工作方式
 
-### 手动运行脚本
+The agent inventories current drives, verifies ownership and live references, and classifies each candidate. Routine cleaning covers regenerable caches. Deep cleaning can cover installer remnants, old logs, copied dependencies, models, obsolete application versions, backups and release packages after scope approval. Existing authorization carries forward. The result includes per-target failures and before/after free space.
 
-只读盘点：
+agent 先盘点当前磁盘，核对文件用途和使用路径，再逐项判断。常规清理处理可再生成缓存。深度清理在范围明确后，可处理安装残留、旧日志、依赖副本、模型、过期软件版本、备份和发布包。已经授予的清理授权会沿用。完成后报告失败项和各盘可用空间变化。
+
+Application versions are checked against launchers, shortcuts and uninstall registrations. Duplicates require content hashes. Agent conversation databases, personal media, project state and backups require explicit scope decisions. Folder names alone do not authorize deletion. Reports contain local paths and should remain outside this public repository.
+
+清理软件旧版本前会检查启动器、快捷方式和卸载登记。判断重复文件会核对内容校验值。会话数据库、个人素材、项目状态和备份需明确清理范围。目录名称本身不能作为删除依据。报告包含本机路径，应保存在此公开仓库之外。
+
+## Scripts / 脚本
+
+Run from the skill folder in PowerShell. The deep scanner requires Node.js. 在技能目录用 PowerShell 运行，深度扫描脚本需要 Node.js。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\cleanup-c-drive.ps1 -ReportOnly
+# Read-only C: report / C 盘只读盘点
+.\scripts\cleanup-c-drive.ps1 -ReportOnly
+
+# Known caches, retaining files modified within 7 days / 已知缓存，保留最近 7 天文件
+.\scripts\cleanup-c-drive.ps1 -CleanKnownCaches
+
+# Exact reviewed targets on any local drive / 任意本地磁盘的明确目标
+.\scripts\cleanup-targets.ps1 -TargetPath 'D:\ExampleApp\Cache' -OutputPath "$env:USERPROFILE\cleanup-preview.json"
+.\scripts\cleanup-targets.ps1 -TargetPath 'D:\ExampleApp\Cache' -Apply -OutputPath "$env:USERPROFILE\cleanup-result.json"
+
+# Authorized full removal of one installer file / 经授权完整删除一个安装包
+.\scripts\cleanup-targets.ps1 -TargetPath 'D:\Staging\old-installer.zip' -Apply -MinimumAgeDays 0
+
+# Review discovered candidates before passing their exact paths / 指定已审核的发现项
+.\scripts\cleanup-c-drive.ps1 -CleanDiscoveredAppCaches -ApprovedAppCachePaths 'C:\Users\Example\AppData\Roaming\ExampleApp\Cache'
+
+# Read-only deep scan with progress and access-error reporting / 带进度和访问错误的深度只读扫描
+node .\scripts\audit-storage.cjs --output "$env:USERPROFILE\storage-audit.json" 'C:\Users\Example' 'D:\Projects'
+
+# Isolated behavioral checks / 隔离环境行为检查
+.\scripts\test-cleanup-targets.ps1
 ```
 
-清理已知安全缓存：
+`cleanup-targets.ps1` defaults to preview. Deletion requires `-Apply`. It validates absolute local paths, rejects overlapping roots and linked ancestors, skips child links, blocks running executables in target roots, and reports failures. Directory roots are preserved. It cannot detect every service/configuration dependency or prevent concurrent filesystem replacement; the agent must inspect usage and operate on quiescent targets.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\cleanup-c-drive.ps1 -CleanKnownCaches
-```
+`cleanup-targets.ps1` 默认预览，通过 `-Apply` 才删除。它校验绝对本地路径，拒绝重叠目标和带链接的上级路径，跳过子目录链接，检查目标中的运行程序，并报告失败。目标根目录会保留。脚本无法发现全部服务或配置依赖，也无法杜绝并发替换目录，因此 agent 仍需核对用途并在目录停止变更时执行。
 
-清理已知安全缓存，并清理已经确认的应用缓存候选项：
+Logical deleted bytes and net free-space change can differ because of hardlinks, compression and concurrent application writes. Permission-denied paths are incomplete measurements. Windows component maintenance uses official tools and can require elevation.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\cleanup-c-drive.ps1 -CleanKnownCaches -CleanDiscoveredAppCaches
-```
+硬链接、压缩和运行中应用的写入会导致删除文件大小与实际可用空间变化不同。权限不足的路径属于未完整统计。Windows 系统组件维护使用官方工具，可能需要管理员权限。
 
-## Disclaimer / 免责声明
+More details / 更多说明
 
-Review the report before deleting anything beyond known cache targets. This skill is intentionally conservative and does not replace backups or Windows system administration judgment.
-
-清理已知缓存之外的内容前，请先阅读报告并确认风险。这个 skill 默认偏谨慎，不能替代备份和 Windows 系统维护判断。
+- [Skill instructions / 技能入口](SKILL.md)
+- [Deep-cleanup decisions / 深度清理判断](references/deep-cleanup.md)
+- [Safety policy / 清理边界](references/safety-policy.md)
